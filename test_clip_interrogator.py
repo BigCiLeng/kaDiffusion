@@ -11,7 +11,7 @@ from pathlib import Path
 from clip_interrogator import clip_interrogator
 from typing import List
 
-sys.path.append('../lib/sentence-transformers-222/sentence-transformers')
+sys.path.append('lib/sentence-transformers-222/sentence-transformers')
 from sentence_transformers import SentenceTransformer, models
 
 import inspect
@@ -25,7 +25,7 @@ fin = open(blip_path, "rt")
 data = fin.read()
 data = data.replace(
     "BertTokenizer.from_pretrained('bert-base-uncased')", 
-    "BertTokenizer.from_pretrained('../lib/clip-interrogator-models-x/bert-base-uncased')"
+    "BertTokenizer.from_pretrained('lib/clip-interrogator-models-x/bert-base-uncased')"
 )
 fin.close()
 
@@ -56,19 +56,19 @@ importlib.reload(clip_interrogator)
 # Config
 class my_config:
     device = "cuda"
-    comp_path = Path('../lib/stable-diffusion-image-to-prompts/')
+    comp_path = Path('lib/stable-diffusion-image-to-prompts/')
     
     model_name = "ViT-H-14/laion2b_s32b_b79k"
     clip_model_name = "ViT-H-14"
-    clip_model_path = "../lib/clip-interrogator-models-x/CLIP-ViT-H-14-laion2B-s32B-b79K/open_clip_pytorch_model.bin"
-    cache_path = "../lib/clip-interrogator-models-x"
+    clip_model_path = "lib/clip-interrogator-models-x/CLIP-ViT-H-14-laion2B-s32B-b79K/open_clip_pytorch_model.bin"
+    cache_path = "lib/clip-interrogator-models-x"
     
-    blip_model_path = "../lib/clip-interrogator-models-x/model_large_caption.pth"
+    blip_model_path = "lib/clip-interrogator-models-x/model_large_caption.pth"
     
     image_path = comp_path / 'images'
     embeddings_num = 384
     
-    st_model_path = "../lib/sentence-transformers-222/all-MiniLM-L6-v2"
+    st_model_path = "lib/sentence-transformers-222/all-MiniLM-L6-v2"
 
 
 def my_interrogate_classic(image: Image, image_features: torch.Tensor, caption: str, ci, cos, medium_features_array, movement_features_array, flaves_features_array) -> str:
@@ -184,3 +184,25 @@ if __name__ == "__main__":
     print(imgId_eId[0])
 
     ci, cos, medium_features_array, movement_features_array, flaves_features_array, merged_array, merged_labels = clip_interrogator_init()
+    prompts = []
+ 
+    image_path = str(my_config.image_path) + "/"
+    for image in images:
+        tmp_path = image_path + image
+        img = Image.open(tmp_path).convert("RGB")
+        caption = ci.generate_caption(img)
+        image_features = ci.image_to_features(img)
+        img_ans = my_interrogate_classic(img, image_features, caption, ci, cos, medium_features_array, movement_features_array, flaves_features_array)
+        prompts.append(img_ans)
+
+    prompts_dist = {}
+    idx = 0
+    for image in images:
+        img = image.split('.')[0]
+        prompts_dist[img] = prompts[idx]
+        idx += 1
+    
+    file = open('data_output/clip_interrogator_outputs.txt', 'w')
+    for key in prompts_dist:
+        file.write(str(key) + ":" + str(prompts_dist[key]) + "\n")
+    file.close()
